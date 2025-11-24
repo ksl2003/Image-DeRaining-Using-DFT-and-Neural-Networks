@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import axios from 'axios';
+import API from '../api';
 import './ImageUploader.css';
 
 const ImageUploader = ({ onImageProcessed, onError, onLoading, loading }) => {
@@ -23,7 +23,7 @@ const ImageUploader = ({ onImageProcessed, onError, onLoading, loading }) => {
       }
 
       setSelectedFile(file);
-      
+
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -46,7 +46,7 @@ const ImageUploader = ({ onImageProcessed, onError, onLoading, loading }) => {
     onError(null);
 
     try {
-      const response = await axios.post('/api/process-image', formData, {
+      const response = await API.post('/api/process-image', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -61,10 +61,10 @@ const ImageUploader = ({ onImageProcessed, onError, onLoading, loading }) => {
         onError(response.data.error || 'Failed to process image');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.details || 
-                          error.message || 
-                          'Failed to process image. Please try again.';
+      const errorMessage = error.response?.data?.error ||
+        error.response?.data?.details ||
+        error.message ||
+        'Failed to process image. Please try again.';
       onError(errorMessage);
     } finally {
       onLoading(false);

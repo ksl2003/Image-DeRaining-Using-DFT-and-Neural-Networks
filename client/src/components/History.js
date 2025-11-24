@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import API from '../api';
 import './History.css';
 
 const History = () => {
@@ -14,7 +14,7 @@ const History = () => {
   const fetchHistory = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/history');
+      const response = await API.get('/api/history');
       if (response.data.success) {
         setHistory(response.data.images);
       }

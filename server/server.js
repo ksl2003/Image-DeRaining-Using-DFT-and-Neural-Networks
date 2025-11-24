@@ -37,7 +37,7 @@ const upload = multer({
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-    
+
     if (mimetype && extname) {
       return cb(null, true);
     } else {
@@ -47,12 +47,12 @@ const upload = multer({
 });
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/derain_app', {
+mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('✅ MongoDB connected'))
-.catch(err => console.error('❌ MongoDB connection error:', err));
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // Image Schema
 const imageSchema = new mongoose.Schema({
@@ -69,6 +69,11 @@ const imageSchema = new mongoose.Schema({
 const Image = mongoose.model('Image', imageSchema);
 
 // Routes
+// Root health check
+app.get('/', (req, res) => {
+  res.json({ status: 'healthy', message: 'Express server is running' });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'healthy', message: 'Express server is running' });
 });
@@ -129,7 +134,7 @@ app.post('/api/process-image', upload.single('image'), async (req, res) => {
     } catch (error) {
       imageRecord.status = 'failed';
       await imageRecord.save();
-      
+
       // Clean up uploaded file
       if (fs.existsSync(req.file.path)) {
         fs.unlinkSync(req.file.path);
@@ -155,7 +160,7 @@ app.get('/api/history', async (req, res) => {
       .sort({ processedAt: -1 })
       .limit(50)
       .select('originalFilename processedAt status result');
-    
+
     res.json({ success: true, images });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch history', details: error.message });
