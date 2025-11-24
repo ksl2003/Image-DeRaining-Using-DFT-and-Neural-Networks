@@ -7,7 +7,7 @@ import tensorflow as tf
 import cv2
 import io
 import base64
-from model_utils import build_derain_model, to_frequency_domain, from_frequency_domain, sharpen_image
+from model_utils import build_derain_model, to_frequency_domain, from_frequency_domain, sharpen_image, blend_luminance_with_original_colors
 import os
 
 app = FastAPI(title="Image De-raining API")
@@ -41,15 +41,18 @@ def load_model():
 @app.on_event("startup")
 async def startup_event():
     """Initialize model on startup"""
+    print("🚀 Starting FastAPI server initialization...")
     load_model()
-    print("🚀 FastAPI server started and model loaded")
+    print("✅ FastAPI server started and model loaded successfully")
 
 @app.get("/")
 async def root():
+    print("GET / request received")
     return {"message": "Image De-raining API is running", "status": "healthy"}
 
 @app.get("/health")
 async def health_check():
+    print(f"GET /health request received. Model loaded: {model is not None}")
     return {"status": "healthy", "model_loaded": model is not None}
 
 @app.post("/api/derain")
@@ -87,6 +90,9 @@ async def derain_image(file: UploadFile = File(...)):
         # Generate clean image
         clean_pred = tf.clip_by_value(rainy_reconstructed - rain_map, 0.0, 1.0)
         clean_pred = sharpen_image(clean_pred.numpy())
+        
+        # Preserve original colors and adjust brightness
+        clean_pred = blend_luminance_with_original_colors(rainy_np, clean_pred)
         
         # Convert to PIL Image
         clean_img = (clean_pred * 255).astype(np.uint8)

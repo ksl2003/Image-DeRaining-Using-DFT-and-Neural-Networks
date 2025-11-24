@@ -81,3 +81,65 @@ def enhance_output_image(img):
     final = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2RGB)
     return np.clip(final / 255.0, 0, 1)
 
+def blend_luminance_with_original_colors(original_img, derained_img):
+    """
+    Combine the luminance (Y) from the de-rained image with the 
+    chrominance (UV) from the original image.
+    Applies Bilateral Filter to remove noise/grain.
+    Strictly preserves original image brightness.
+    
+    Args:
+        original_img: Original rainy image (numpy array, 0-1 float or 0-255 uint8)
+        derained_img: De-rained image (numpy array, 0-1 float)
+    Returns:
+        Final image (numpy array, 0-1 float)
+    """
+    # Ensure inputs are uint8 for OpenCV conversion
+    if original_img.dtype != np.uint8:
+        orig = np.uint8(np.clip(original_img * 255, 0, 255))
+    else:
+        orig = original_img
+        
+    if derained_img.dtype != np.uint8:
+        derained = np.uint8(np.clip(derained_img * 255, 0, 255))
+    else:
+        derained = derained_img
+
+    # Convert to YUV color space
+    orig_yuv = cv2.cvtColor(orig, cv2.COLOR_RGB2YUV)
+    derained_yuv = cv2.cvtColor(derained, cv2.COLOR_RGB2YUV)
+
+    # Split channels
+    y_orig, u_orig, v_orig = cv2.split(orig_yuv)
+    y_derained, u_derained, v_derained = cv2.split(derained_yuv)
+
+    # 1. Use Y channel from de-rained image
+    final_y = y_derained
+
+    # 2. Apply Bilateral Filter to remove noise/grain while preserving edges
+    # d=5: Diameter of each pixel neighborhood
+    # sigmaColor=75: Filter sigma in the color space
+    # sigmaSpace=75: Filter sigma in the coordinate space
+    final_y = cv2.bilateralFilter(final_y, 5, 75, 75)
+
+    # 3. Match Brightness strictly to Original Image
+    mean_y_orig = np.mean(y_orig)
+    mean_y_final = np.mean(final_y)
+    diff = mean_y_orig - mean_y_final
+    
+    # Add difference (using float to avoid overflow)
+    final_y = final_y.astype(np.float32) + diff
+    final_y = np.clip(final_y, 0, 255).astype(np.uint8)
+
+    # 4. Use U and V channels from ORIGINAL image
+    final_u = u_orig
+    final_v = v_orig
+
+    # Merge channels
+    final_yuv = cv2.merge([final_y, final_u, final_v])
+
+    # Convert back to RGB
+    final_rgb = cv2.cvtColor(final_yuv, cv2.COLOR_YUV2RGB)
+    
+    return np.clip(final_rgb / 255.0, 0, 1)
+

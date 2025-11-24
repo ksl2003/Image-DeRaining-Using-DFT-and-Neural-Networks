@@ -103,6 +103,7 @@ app.post('/api/process-image', upload.single('image'), async (req, res) => {
     });
 
     try {
+      console.log(`Attempting to connect to FastAPI at: ${FASTAPI_URL}/api/derain`);
       // Call FastAPI endpoint
       const response = await axios.post(`${FASTAPI_URL}/api/derain`, formData, {
         headers: {
@@ -111,6 +112,8 @@ app.post('/api/process-image', upload.single('image'), async (req, res) => {
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
       });
+
+      console.log('FastAPI response received');
 
       // Update database record
       imageRecord.status = 'completed';
@@ -140,10 +143,20 @@ app.post('/api/process-image', upload.single('image'), async (req, res) => {
         fs.unlinkSync(req.file.path);
       }
 
-      console.error('FastAPI error:', error.response?.data || error.message);
+      console.error('FastAPI Connection Error:', {
+        message: error.message,
+        url: `${FASTAPI_URL}/api/derain`,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+
       res.status(500).json({
         error: 'Failed to process image',
-        details: error.response?.data?.detail || error.message
+        details: error.response?.data?.detail || error.message,
+        debug: {
+          url: `${FASTAPI_URL}/api/derain`,
+          status: error.response?.status
+        }
       });
     }
 
